@@ -2,6 +2,21 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
+<script>
+/* Central BM — o acesso a este dashboard agora é pela central única.
+   Link antigo/acesso direto é remanejado para a central; dentro dela,
+   com a sessão ativa, a página abre normalmente. */
+(function () {
+  var PORTAL = 'https://borgesmacedoadvocacia.github.io/';
+  if (location.protocol === 'file:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1') return;
+  function ir() { try { window.top.location.replace(PORTAL); } catch (e) { location.replace(PORTAL); } }
+  if (window.self === window.top) { ir(); return; }
+  var ok = false;
+  try { ok = sessionStorage.getItem('bm_portal_auth') === '1'; } catch (e) {}
+  if (!ok) { ir(); return; }
+  document.documentElement.setAttribute('data-portal', '1');
+})();
+</script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Metas e Resultados — Processual | Borges Macedo</title>
   <link rel="icon" type="image/png" href="data:image/png;base64,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" />
@@ -494,14 +509,15 @@
   // CONFIGURAÇÃO
   // ============================================================
   const CONFIG = {
-    // Planilha "Metas e Resultados - Processual"
-    // (compartilhada como "qualquer pessoa com o link pode ver")
-    SHEET_ID: '1JpfoE6EpMMRb-DBnwBtVVaJzkL9USr1YzZ9n4qMCQP0',
+    // O ID da planilha e a chave da API não ficam mais em texto puro:
+    // estão cifrados no COFRE abaixo (AES-256-GCM) e são destravados com a
+    // credencial única guardada na sessão pela Central de Dashboards.
+    SHEET_ID: null,
 
     // Chave de API do Google (a mesma usada no dashboard principal).
     // Permite ler as CORES das células — o % de cada métrica usa a mesma
     // cor aplicada na planilha (verde/amarelo/vermelho).
-    GOOGLE_API_KEY: 'AIzaSyDPMGdaY0Yxm4EFrGFoaamJeWBtfDAJZfw',
+    GOOGLE_API_KEY: null,
 
     // Padrão do nome das abas mensais
     ABA_PREFIXO: 'Resultados Gerais - ',
@@ -512,6 +528,40 @@
     // Atualização automática (em minutos)
     AUTO_REFRESH_MIN: 5,
   };
+
+  /* ------------------------------------------------------------
+     COFRE — {SHEET_ID, GOOGLE_API_KEY} cifrados com AES-256-GCM.
+     Chave derivada de PBKDF2-SHA256(usuário + senha, salt, 310.000
+     iterações) com a credencial única informada na Central de
+     Dashboards. Sem a sessão da central, não há dados.
+     ------------------------------------------------------------ */
+  const COFRE = {
+    v: 1,
+    it: 310000,
+    salt: 'jj9pyUqJdZOdJUrna4f4Qg==',
+    iv: 'sjgShUmSQ9pljvW0',
+    ct: 'IqVAfUt0M48XHs0OqfzGZPAm6ddIKe3rtFjD0zKrJZ0mwnr3D3Vk+swnrqwgfrSihxkYGPsUH3e4Ql7WRVav4r8EcXzcXraCGbK87GAd2FjP4L6Z0KpdI+ucVTb/KolSkOpoka/bbbBxg9v6LhA8sg4+l7FjeBToTvGOEF3417cxdOcj4bY='
+  };
+
+  const b64bytes = b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+
+  async function abrirCofre() {
+    const cred = JSON.parse(sessionStorage.getItem('bm_portal_cred') || 'null');
+    if (!cred || cred.u == null || cred.s == null) throw new Error('sem sessão da central');
+    const enc = new TextEncoder();
+    const material = await crypto.subtle.importKey(
+      'raw', enc.encode(cred.u.trim().toLowerCase() + '\n' + cred.s),
+      'PBKDF2', false, ['deriveKey']
+    );
+    const chave = await crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt: b64bytes(COFRE.salt), iterations: COFRE.it, hash: 'SHA-256' },
+      material, { name: 'AES-GCM', length: 256 }, false, ['decrypt']
+    );
+    const claro = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: b64bytes(COFRE.iv) }, chave, b64bytes(COFRE.ct)
+    );
+    return JSON.parse(new TextDecoder().decode(claro));
+  }
 
   const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
@@ -1209,9 +1259,20 @@
   // ============================================================
   document.getElementById('btn-atualizar').addEventListener('click', () => carregarDados());
 
-  montarSeletorMes();
-  carregarDados();
-  setInterval(() => carregarDados(), CONFIG.AUTO_REFRESH_MIN * 60 * 1000);
+  // Destrava o cofre com a sessão da central antes de buscar qualquer dado
+  (async function bootar() {
+    try {
+      const segredo = await abrirCofre();
+      CONFIG.SHEET_ID = segredo.SHEET_ID;
+      CONFIG.GOOGLE_API_KEY = segredo.GOOGLE_API_KEY;
+    } catch (e) {
+      location.replace('https://borgesmacedoadvocacia.github.io/');
+      return;
+    }
+    montarSeletorMes();
+    carregarDados();
+    setInterval(() => carregarDados(), CONFIG.AUTO_REFRESH_MIN * 60 * 1000);
+  })();
 
   // Recarrega ao voltar para a aba (se passou mais de 2 minutos)
   let _ultimoFetch = Date.now();
