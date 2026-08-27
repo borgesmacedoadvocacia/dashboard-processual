@@ -530,37 +530,55 @@
   };
 
   /* ------------------------------------------------------------
-     COFRE — {SHEET_ID, GOOGLE_API_KEY} cifrados com AES-256-GCM.
-     Chave derivada de PBKDF2-SHA256(usuário + senha, salt, 310.000
-     iterações) com a credencial única informada na Central de
+     COFRES — {SHEET_ID, GOOGLE_API_KEY} cifrados com AES-256-GCM,
+     um cofre por perfil autorizado (Administração, Lideranças e
+     Equipe). Chave derivada de PBKDF2-SHA256(usuário + senha, salt,
+     310.000 iterações) com a credencial informada na Central de
      Dashboards. Sem a sessão da central, não há dados.
      ------------------------------------------------------------ */
-  const COFRE = {
-    v: 1,
-    it: 310000,
-    salt: 'jj9pyUqJdZOdJUrna4f4Qg==',
-    iv: 'sjgShUmSQ9pljvW0',
-    ct: 'IqVAfUt0M48XHs0OqfzGZPAm6ddIKe3rtFjD0zKrJZ0mwnr3D3Vk+swnrqwgfrSihxkYGPsUH3e4Ql7WRVav4r8EcXzcXraCGbK87GAd2FjP4L6Z0KpdI+ucVTb/KolSkOpoka/bbbBxg9v6LhA8sg4+l7FjeBToTvGOEF3417cxdOcj4bY='
-  };
+  const COFRES = [
+    /* Administração */
+    {
+      v: 1,
+      it: 310000,
+      salt: 'jj9pyUqJdZOdJUrna4f4Qg==',
+      iv: 'sjgShUmSQ9pljvW0',
+      ct: 'IqVAfUt0M48XHs0OqfzGZPAm6ddIKe3rtFjD0zKrJZ0mwnr3D3Vk+swnrqwgfrSihxkYGPsUH3e4Ql7WRVav4r8EcXzcXraCGbK87GAd2FjP4L6Z0KpdI+ucVTb/KolSkOpoka/bbbBxg9v6LhA8sg4+l7FjeBToTvGOEF3417cxdOcj4bY='
+    },
+    /* Lideranças */
+    {"v":1,"it":310000,"salt":"mEyBwN74imBaMeKr3kcCbw==","iv":"zcC70FdU5Z803UGH","ct":"ww7/uYuggTkL6r/+g4bZjQbDMic1Pc/s5WUkXktYRDGlK7x7cJZHJxNjUeB5GODxYxNe8uCrw6PCbEk0yd+BYkXjydyKLPKQ9iAq8I3hudDXeQPi7DNNdivNRBktC5g9czbDt/6uGNbpkXBchwQRN98zaH+4JPPqcSDdU13dcBWtXW8fLOU="},
+    /* Equipe */
+    {"v":1,"it":310000,"salt":"cUaU+z2Kr1MGx6Q0yVSMTA==","iv":"i4Dyx0lqmZQDunjC","ct":"z6L5yWgHQDTeDl6DQ1MV+YaGfc3jRZOhxqf1IfuF0WpURLWXkiaLRL2SJAWJgerOdU2ffPV9OgNKlJQcZqnqHVj1Q24CW45MHKtn+k2R4AuQFh8XXm1GTu1Wcq51Z2Q2rqsCKYcxiyIgIBOcSw8eaaNow3uFxt6hT2vTUkHHOeACBNOvBm0="}
+  ];
 
   const b64bytes = b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+
+  // Aceita o usuário com ou sem acentos ("Lideranças" e "Liderancas" valem igual)
+  const normUsuario = u => u.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+  async function abrirUmCofre(cofre, usuario, senha) {
+    const enc = new TextEncoder();
+    const material = await crypto.subtle.importKey(
+      'raw', enc.encode(normUsuario(usuario) + '\n' + senha),
+      'PBKDF2', false, ['deriveKey']
+    );
+    const chave = await crypto.subtle.deriveKey(
+      { name: 'PBKDF2', salt: b64bytes(cofre.salt), iterations: cofre.it, hash: 'SHA-256' },
+      material, { name: 'AES-GCM', length: 256 }, false, ['decrypt']
+    );
+    const claro = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: b64bytes(cofre.iv) }, chave, b64bytes(cofre.ct)
+    );
+    return JSON.parse(new TextDecoder().decode(claro));
+  }
 
   async function abrirCofre() {
     const cred = JSON.parse(sessionStorage.getItem('bm_portal_cred') || 'null');
     if (!cred || cred.u == null || cred.s == null) throw new Error('sem sessão da central');
-    const enc = new TextEncoder();
-    const material = await crypto.subtle.importKey(
-      'raw', enc.encode(cred.u.trim().toLowerCase() + '\n' + cred.s),
-      'PBKDF2', false, ['deriveKey']
-    );
-    const chave = await crypto.subtle.deriveKey(
-      { name: 'PBKDF2', salt: b64bytes(COFRE.salt), iterations: COFRE.it, hash: 'SHA-256' },
-      material, { name: 'AES-GCM', length: 256 }, false, ['decrypt']
-    );
-    const claro = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv: b64bytes(COFRE.iv) }, chave, b64bytes(COFRE.ct)
-    );
-    return JSON.parse(new TextDecoder().decode(claro));
+    for (const cofre of COFRES) {
+      try { return await abrirUmCofre(cofre, cred.u, cred.s); } catch (e) {}
+    }
+    throw new Error('credenciais sem acesso a este dashboard');
   }
 
   const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
