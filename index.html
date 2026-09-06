@@ -678,17 +678,60 @@
     return CONFIG.ABA_PREFIXO + MESES[mes] + '/' + ano;
   }
 
-  // A planilha tem dois formatos de aba:
-  //   NOVO (Julho/2026 em diante): A=Métrica, B=Responsável, C=Resultado, D=%,
-  //                                E=Meta do Mês, F=Meta Proporcional, G=Média/dia
-  //   ANTIGO (até Junho/2026):     A=Métrica, B=Meta do Mês, C=Meta Proporcional,
-  //                                D=Resultado, E=%, F=Média/dia  (sem responsável)
+  // Esta planilha já teve três ordens de coluna diferentes:
+  //   até Junho/2026:  Métrica, Meta Mensal, Meta Proporcional, Resultado, %, Média
+  //   Julho/Agosto:    Métrica, Responsável, Resultado, %, Meta Mensal, Meta Prop., Média
+  //   Setembro:        Métrica, Periodicidade, Responsável, Resultado, %, Meta Prop., Meta Mensal
+  //
+  // Detectar por posição quebrou nas duas mudanças — a de setembro fazia a meta
+  // do mês ser lida da coluna PERIODICIDADE ("MENSAL", que não é número, logo
+  // vazio) e a meta proporcional vir de RESPONSÁVEL. Por isso a resolução passa
+  // a ser pelo NOME do cabeçalho; as posições antigas ficam só de retaguarda,
+  // para abas sem cabeçalho reconhecível.
   const LAYOUTS = {
     novo:   { resp: 1, resultado: 2, pct: 3, metaMes: 4, metaProp: 5, mediaDia: 6 },
     antigo: { resp: null, resultado: 3, pct: 4, metaMes: 1, metaProp: 2, mediaDia: 5 },
   };
 
+  const chaveCab = (t) => String(t || '').replace(/\s+/g, ' ').trim().toUpperCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  // Ordem importa: "RESULTADO X META" tem de ser testado antes de "RESULTADO",
+  // senão a coluna do percentual é confundida com a do resultado.
+  const REGRAS_CAB = [
+    ['pct',       /^RESULTADO X META|^%|PERCENTUAL/],
+    ['resultado', /^RESULTADO/],
+    ['metaProp',  /^META PROPORCIONAL/],
+    ['metaMes',   /^META (MENSAL|DO MES)/],
+    ['mediaDia',  /^MEDIA/],
+    ['resp',      /^RESPONSAVEL/],
+    ['periodicidade', /^PERIODICIDADE/],
+  ];
+
+  // Procura a linha de cabeçalho nas primeiras linhas: é a que começa com
+  // "MÉTRICA". Sem ela, devolve null e o chamador cai na retaguarda posicional.
+  function mapearColunas(grade) {
+    for (let r = 0; r < Math.min(grade.length, 6); r++) {
+      const cols = grade[r] || [];
+      if (chaveCab(cols[0] && cols[0].v) !== 'METRICA') continue;
+      const mapa = { resp: null, resultado: null, pct: null,
+                     metaMes: null, metaProp: null, mediaDia: null, periodicidade: null };
+      for (let c = 1; c < cols.length; c++) {
+        const nome = chaveCab(cols[c] && cols[c].v);
+        if (!nome) continue;
+        for (const [campo, re] of REGRAS_CAB) {
+          if (mapa[campo] === null && re.test(nome)) { mapa[campo] = c; break; }
+        }
+      }
+      // Só vale se achou o essencial; senão é cabeçalho de outro formato de aba.
+      if (mapa.resultado != null && (mapa.metaMes != null || mapa.metaProp != null)) return mapa;
+    }
+    return null;
+  }
+
   function detectarLayout(grade) {
+    const porNome = mapearColunas(grade);
+    if (porNome) return porNome;
     const cabecalho = ((grade[0] || [])[1]?.v || '').trim().toUpperCase();
     return /^RESPONS(Á|A)VEL$/.test(cabecalho) ? LAYOUTS.novo : LAYOUTS.antigo;
   }
