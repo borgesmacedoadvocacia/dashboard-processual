@@ -792,7 +792,7 @@
 
   // Carrega pela API do Sheets (valores + cores das células)
   async function buscarViaAPI(aba) {
-    const range = encodeURIComponent(aba + '!A1:I100');
+    const range = encodeURIComponent(aba + '!A:I');
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}` +
       `?ranges=${range}&includeGridData=true` +
       `&fields=sheets(data(rowData(values(formattedValue,effectiveFormat(backgroundColor)))))` +
